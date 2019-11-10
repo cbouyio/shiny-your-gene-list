@@ -1,0 +1,22 @@
+R-shiny tuto : 
+https://shiny.rstudio.com/tutorial/
+
+clusterprofiler book (1-8)
+https://yulab-smu.github.io/clusterProfiler-book/
+
+iSEE 
+https://bioconductor.org/packages/release/bioc/html/iSEE.html
+
+See some projects/ideas of shiny apps :
+https://shiny.rstudio.com/gallery/
+
+This one is pretty interesting with the point-clicking : 
+https://shiny.rstudio.com/gallery/plot-interaction-advanced.html
+
+Multi-plots : 
+https://shiny.rstudio.com/gallery/retirement-simulation.html
+
+plotly : Apparently we can use this one to retrieve some informations about points
+
+shiny dashboard
+shiny widget
