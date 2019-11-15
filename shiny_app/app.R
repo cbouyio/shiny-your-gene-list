@@ -36,25 +36,38 @@ ui <- fluidPage(
                                Semicolon = ";",
                                Tab = "\t",
                                WhiteSpace = " "),
-                   selected = ","),
+                   selected = ",")
+      ),
       # radioButtons("quote", "Quote",
       #              choices = c(None = "",
       #                          "Double Quote" = '"',
       #                          "Single Quote" = "'"),
       #              selected = '"'),
       
-      ),
+      #),
       # Horizontal line ----
-      tags$hr()),
+      tags$hr(),
+      selectInput("organism", "Select organism(s)", list(
+        "Vertebrate"  = c("Human (Homo sapiens)"="human","Mouse (Mus musculus)"="mouse",
+                          "Western clawed frog (Xenopus tropicalis)"="xenopus","Zebrafish (Danio rerio)"="danio"
+                          ),
+        "Eukaryotic" = c("Fruit fly (Drosophila melanogaster)"="droso",
+                          "Nematode worm (Caenorhabditis elegans)"="celegans","Yeast (Saccharomyces cerevisiae)"="saccharomyces"),
+        "Prokaryotic" = c("Bacteria (Escherichia coli)"="ecoli")
+        
+      ), selected = NULL, multiple = TRUE)),
     # Main panel for displaying outputs ----
       mainPanel(
       h3("This is the main title of the page"),
-      verbatimTextOutput("cleanValue")
+      )
       # Output: Data file ----
       #tableOutput("contents")
-      )
+      
+    
   )
 )
+
+
 
 ####SERVER####################
 
@@ -64,13 +77,15 @@ server <- function(input, output) {
   output$file_listener <- reactive({
     return(!is.null(input$file))
   })
+  #Listener is always active 
+  outputOptions(output, "file_listener", suspendWhenHidden = FALSE)
   output$contents <- renderTable({
     
     # input$file1 will be NULL initially. After the user selects
     # and uploads a file, head of that data file by default,
     # or all rows if selected, will be shown.
     req(input$file)
-    ####Check if the user wants to upload a file or paste a list of genes
+    #Check if the user wants to upload a file or paste a list of genes
     if(is.null(input$file) == FALSE){
       df <- read.csv(input$file$datapath,
                      header = input$header,
