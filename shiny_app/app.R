@@ -9,6 +9,7 @@ library(org.Mm.eg.db) #mmusculus
 library(org.Sc.sgd.db) #scerevisiae
 library(org.Xl.eg.db) #xenopus
 library(clusterProfiler)
+library(shinycssloaders) #spinner while plot is loading
 
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
@@ -48,7 +49,7 @@ ui <- fluidPage(
                 accept = c("text/csv",
                            "text/comma-separated-values,text/plain",
                            ".csv")),
-      textAreaInput("manualEntry", "...Or write your list of genes", width = "200px"),
+      textAreaInput("manualEntry", "...Or write your list of genes", width = "250px"),
       helpText("Write a list of genes like this : geneID,geneID2,geneID3"),
       verbatimTextOutput("value"), #Will allow the attribution of manualEntry in var output$value
 
@@ -85,20 +86,32 @@ ui <- fluidPage(
                           "Nematode worm (Caenorhabditis elegans)"="org.Ce.eg.db","Yeast (Saccharomyces cerevisiae)"="org.Sc.sgd.db"),
         "Prokaryotic" = c("Bacteria (Escherichia coli)"="org.EcK12.eg.db"),
         "Plantae" = c("Angiosperma (Arabidopsis thaliana)"="org.At.tair.db")), selected = NULL, multiple = FALSE),
-      # Horizontal line ----
-      tags$hr(),
+ 
       radioButtons("idType", "Gene identifier type",
                    choices = c(ENTREZ = "ENTREZID",
                                ENSEMBL = "ENSEMBL",
                                SYMBOL = "SYMBOL",
                                "COMMON NAME" = "COMMON"),
                    selected = "ENSEMBL"),
-      # submit button
-      actionButton("submit", "Submit")),
+      
+      checkboxGroupInput("ontology", "Ontologies",
+                         c("Molecular Function" = "MF",
+                           "Cellular Component" = "CC",
+                           "Biological Process" = "BP")),
+    # submit button
+      actionButton("submit", "Submit"), width = 2),
     # Main panel for displaying outputs ----
       mainPanel(
-      h3("This is the main title of the page"),
-       textOutput("orga")
+      h2("This is the main title of the page"),
+      tabsetPanel(
+        tabPanel("Plot", fluidRow(
+          splitLayout(cellWidths = c("33%", "33%", "33%"),  withSpinner(plotOutput("barplot_MF"), type = 5,color="#0dc5c1"),
+                      withSpinner(plotOutput("barplot_CC"),type = 5,color="#0dc5c1"), withSpinner(plotOutput("barplot_BP"),type = 5,color="#0dc5c1")))),
+        tabPanel("Summary", verbatimTextOutput("summary")), 
+        tabPanel("Table", tableOutput("table"))
+      ),
+       textOutput("orga"),
+      
       )
   )
 )
@@ -115,11 +128,12 @@ server <- function(input, output) {
   outputOptions(output, "file_listener", suspendWhenHidden = FALSE)
   #  trim <- function (x) gsub("^\\s+|\\s+$", "", x) #remove trailing and leading whitespace
   
+  #Wait for the user to finish filling the informations and update all the variables
   observe({text_reactive()})
   text_reactive <- eventReactive( input$submit, {
 
    
-    ####Retrieve list of genes
+ ### Retrieve list of genes ----
     geneList = reactive({
       #Check if the user wants to upload a file or paste a list of genes
       if(!is.null(input$file)){
@@ -129,27 +143,21 @@ server <- function(input, output) {
                           strip.white=TRUE,
                           quote = input$quote
         )
-        # y = data.frame(x = names(read.csv(input$file$datapath,
-        #                                        header = input$header,
-        #                                        sep = input$sep, 
-        #                                        strip.white=TRUE,
-        #                                        quote = input$quote
-        # )))
-        # y[] <- lapply(y, as.character)
-        # return(list('genes'=csv))
+       
         
-        # geneList = as.character(geneList[,1])
-        # geneList = sort(geneList, decreasing = TRUE)
-        return(list('data'=geneList))
+        geneList = as.character(geneList[,1])
+        geneList = sort(geneList, decreasing = TRUE)
+        # return(list('data'=geneList))
+        return(geneList)
       }
       else{
         genes = c(strsplit(input$manualEntry, "[,\\t;  ]")) 
         #will recognize any character used to write the list
-        return(list('data'=genes))
+        return(genes)
       }
     })
     
-  # Isolate the reactive values to store them and manipulate them
+  ### Isolate the reactive values to store them and manipulate them ----
   isolate({
     ###Format of the IDs ?
     req(geneList())
@@ -157,37 +165,61 @@ server <- function(input, output) {
                   ENSEMBL = "ENSEMBL",
                   SYMBOL = "SYMBOL")
 
-
-    observe(print("GeneList"))
-    x= geneList()$data
-    vecgenes= x[[1]]
-    names(vecgenes)=x[[1]]
-    gene_list<-na.omit(vecgenes)
-    gene_list = sort(gene_list, decreasing = TRUE)
-    observe(print(gene_list))
-    observe(print(names(vecgenes)))
-
-    gene.df = bitr(names(vecgenes), fromType = input$idType,
+    # x= geneList()$data
+    gene_list= geneList()
+    # observe(print(class(x)))
+    # vecgenes= x[[1]]
+    # names(vecgenes)=x[[1]]
+    # gene_list<-na.omit(vecgenes)
+    # gene_list = sort(gene_list, decreasing = TRUE)
+    geneConv.df = bitr(gene_list, fromType = input$idType,
                    toType = c(all_types[!all_types %in% input$idType]),
                    OrgDb = input$organism)
+    
+    #/!\ input$idType might be different than ENSEMBL !!
+    rownames(geneConv.df) <- geneConv.df[["ENSEMBL"]]
+    observe(print(geneConv.df))
+    #remove ensembl column
+    geneConv.df$ENSEMBL <- NULL
+    #add only symbol elements
+    geneListSYMB <- geneConv.df[["SYMBOL"]]
+    observe(print(geneListSYMB))
+    observe(print(geneConv.df))
+  
+    ### GO enrichments ------------
+    # GO group enrichment
+    observe(print(class(input$ontology)))
+    for(i in 1: length(input$ontology)){
+      if(input$ontology[i] == "MF"){
+        ggoDEGs_MF <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
+        output$barplot_MF <-renderPlot({
+          barplot(ggoDEGs_MF, showCategory = 30,  title = "GroupGO DEGs MF")
+        })
 
-    observe(print(gene.df))
-    observe(print(summary(gene.df)))
+      }else if (input$ontology[i] == "BP"){
+        ggoDEGs_BP <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
+        output$barplot_BP <-renderPlot({
+          barplot(ggoDEGs_BP, showCategory = 30,  title = "GroupGO DEGs BP")
+        })
+      }else if (input$ontology[i] == "CC"){
+        ggoDEGs_CC <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
+        output$barplot_CC <-renderPlot({
+          barplot(ggoDEGs_CC, showCategory = 30,  title = "GroupGO DEGs CC")
+        })
+      }
+      
+    }
+
+    # ggoDEGs_BP2 <- groupGO(gene = gene_list, OrgDb = org.Hs.eg.db, ont = "BP", level = 2, keyType = "ENSEMBL", readable = TRUE)
+    # barplot(ggoDEGs_BP2, showCategory = 30,  title = "GroupGO DEGs BP_2")
+    #
+    
   })
   })
 }  
   
   
-  ### GO enrichments ------------
-  # GO group enrichment
-  # ggoDEGs_MF2 <- groupGO(gene = genesENS, OrgDb = database(), ont = "MF", level = 2, keyType = "ENSEMBL", readable = TRUE)
-  # barplot(ggoDEGs_MF2, showCategory = 30,  title = "GroupGO DEGs MF_2")
-  # 
-  # 
-  # ggoDEGs_BP2 <- groupGO(gene = genesENS, OrgDb = org.Hs.eg.db, ont = "BP", level = 2, keyType = "ENSEMBL", readable = TRUE)
-  # barplot(ggoDEGs_BP2, showCategory = 30,  title = "GroupGO DEGs BP_2")
-  #   
-  
+
   
   # })
 
