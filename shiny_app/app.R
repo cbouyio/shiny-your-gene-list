@@ -10,7 +10,7 @@ library(org.Sc.sgd.db) #scerevisiae
 library(org.Xl.eg.db) #xenopus
 library(clusterProfiler)
 library(shinycssloaders) #spinner while plot is loading
-
+library(ReactomePA) #enrichpathway
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 # 
@@ -104,15 +104,24 @@ ui <- fluidPage(
       mainPanel(
       h2("This is the main title of the page"),
       tabsetPanel(
-        tabPanel("Plot", fluidRow(
-          splitLayout(cellWidths = c("33%", "33%", "33%"),  withSpinner(plotOutput("barplot_MF"), type = 5,color="#0dc5c1"),
-                      withSpinner(plotOutput("barplot_CC"),type = 5,color="#0dc5c1"), withSpinner(plotOutput("barplot_BP"),type = 5,color="#0dc5c1")))),
-        tabPanel("Summary", verbatimTextOutput("summary")), 
-        tabPanel("Table", tableOutput("table"))
-      ),
-       textOutput("orga"),
-      
-      )
+        tabPanel("GeneOntology enrichment", fluidRow(
+          #Deal the number of cellWidths with the number of checkbox, divide 100/number and replace
+          splitLayout(cellWidths = c("33%", "33%", "33%"), plotOutput("barplot_MF"),
+                      withSpinner(plotOutput("barplot_CC"),type = 5,color="#0dc5c1"), plotOutput("barplot_BP")))),
+        tabPanel("KEGG enrichment",
+                 # fluidRow(splitLayout(cellWidths = c("25%", "25%", "25%","25%"),
+                    withSpinner(plotOutput("barplot_ekegDEGs"), type = 5,color="#0dc5c1"),
+                    plotOutput("barplot_ekegMDGEs"),
+                    withSpinner(plotOutput("barplot_ekePDEGs"),type = 5,color="#0dc5c1"),
+                    plotOutput("dotplot_ekePDEGs")
+                 # )
+        # )
+      ),        
+           
+        
+        tabPanel("Msigdbr"),
+        tabPanel("Reactome")
+      ))
   )
 )
 
@@ -210,21 +219,62 @@ server <- function(input, output) {
       
     }
 
-    # ggoDEGs_BP2 <- groupGO(gene = gene_list, OrgDb = org.Hs.eg.db, ont = "BP", level = 2, keyType = "ENSEMBL", readable = TRUE)
-    # barplot(ggoDEGs_BP2, showCategory = 30,  title = "GroupGO DEGs BP_2")
-    #
+    # # Create the "universe" gene set (this is a set of all the "detected" genes)
+    # row_NON_zero <- apply(tpmPPglu, 1, function(row) all(row != 0))
+    # tpmPPgluClean <- tpmPPglu[row_NON_zero,]
+    # univPPglu <- rownames(tpmPPgluClean)
+    # geneConv2 <- bitr(univPPglu, fromType = "ENSEMBL", toType = c("SYMBOL"), OrgDb = org.Hs.eg.db)
+    # univPPglu2 <- geneConv2[["SYMBOL"]]
+    # 
+    # ## MSIGDB enrichment
+    # m_df <- msigdbr(species = "Homo sapiens")
+    # m_df$gs_id <- m_df$gene_symbol # BIG TRICK TO SWAP THE COLUMN NAMES!!!!!!
+    # 
+    # # Gene enrichment
+    # esigDEGs <- enricher(genesSYMB, universe = univPPglu2, TERM2GENE = m_df, minGSSize = 50, maxGSSize = 1000)  # One can play arounf with the set sizes to obtain something meaningfull.
+    # barplot(esigDEGs, showCategory = 50, title = "BarPlot DEGs MsiGDB enrichment")
+    # dotplot(esigDEGs, showCategory = 50, title = "DotPlot DEGs MsiGDB enrichment")
+    # 
+    # # Gene set enrichment
+    # esigsDEGs <- GSEA(geneListSYMB, minGSSize = 20, TERM2GENE = m_df)
+    # dotplot(esigsDEGs, showCategory = 50, title = "DotPlot MsiGDB DEGS GSEA")
     
+ ## KEGG pathway enrichment -----
+    # Convert ENSEMBL IDs to ENTREZ <===== WHY NOT USE BITR ?
+    # genesENTREZ <- as.character(mapIds(input$organism, gene_list, to ="ENTREZID", from= "ENSEMBL"))
+
+    genesENTREZ= geneConv.df[["ENTREZID"]]
+    allOrganisms_KEGG <- c("hsa","mmu","xtr","dre","dme","cel","sce","ecok","ath")
+    names(allOrganisms_KEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db",
+    "org.EcK12.eg.db","org.At.tair.db")
+
+    ###/!\ A.thaliana and E.coli are not in the list, here human and yeast were written but will give a result error
+    allOrganisms_enrichKEGG = c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly","yeast","human")
+    names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db",
+                                "org.EcK12.eg.db","org.At.tair.db")
+
+    # Enrich KEGG pathways
+    ekegDEGs <- enrichKEGG(gene = genesENTREZ, organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
+    output$barplot_ekegDEGs <-renderPlot({
+      barplot(ekegDEGs, title = "DEGs KEGG enrichment")  # Only one "ribosome"
+    })
+    # Enrich KEGG modules
+    ekegMDGEs <- enrichMKEGG(gene = genesENTREZ, organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
+    output$barplot_ekegMDGEs <-renderPlot({
+      barplot(ekegMDGEs, title = "DEGs KEGG modules enrichment")  # Only one "ribosome"
+    })
+    # Enrich REACTOME Pathways
+    ekePDEGs <- enrichPathway(gene = genesENTREZ, organism = allOrganisms_enrichKEGG[[input$organism]], pvalueCutoff = 0.05)
+    output$barplot_ekePDEGs <-renderPlot({
+      barplot(ekePDEGs, showCategory = 30, title = "DEGs REACTOME Pathways enrichment")
+    })
+    output$dotplot_ekePDEGs <-renderPlot({
+        dotplot(ekePDEGs, showCategory = 20, title = "DEGs REACTOME Pathways enrichment")
+    })
+
   })
   })
 }  
-  
-  
 
-  
-  # })
-
-
-
-  
 # Run the app ----
 shinyApp(ui, server)
