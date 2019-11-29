@@ -103,24 +103,25 @@ ui <- fluidPage(
     # Main panel for displaying outputs ----
       mainPanel(
       h2("This is the main title of the page"),
-      tabsetPanel(
-        tabPanel("GeneOntology enrichment", fluidRow(
+      tabsetPanel(id="tabs",
+        tabPanel(value= "tab1","GeneOntology enrichment", fluidRow(
           #Deal the number of cellWidths with the number of checkbox, divide 100/number and replace
           splitLayout(cellWidths = c("33%", "33%", "33%"), plotOutput("barplot_MF"),
                       withSpinner(plotOutput("barplot_CC"),type = 5,color="#0dc5c1"), plotOutput("barplot_BP")))),
-        tabPanel("KEGG enrichment",
+        tabPanel(value= "tab2","KEGG enrichment",
                  # fluidRow(splitLayout(cellWidths = c("25%", "25%", "25%","25%"),
                     withSpinner(plotOutput("barplot_ekegDEGs"), type = 5,color="#0dc5c1"),
                     plotOutput("barplot_ekegMDGEs"),
-                    withSpinner(plotOutput("barplot_ekePDEGs"),type = 5,color="#0dc5c1"),
-                    plotOutput("dotplot_ekePDEGs")
+                    
                  # )
         # )
       ),        
            
         
-        tabPanel("Msigdbr"),
-        tabPanel("Reactome")
+        tabPanel(value= "tab3","Msigdbr"),
+        tabPanel(value= "tab4","Reactome",
+                 withSpinner(plotOutput("barplot_ekePDEGs"),type = 5,color="#0dc5c1"),
+                 plotOutput("dotplot_ekePDEGs"))
       ))
   )
 )
@@ -174,6 +175,9 @@ server <- function(input, output) {
                   ENSEMBL = "ENSEMBL",
                   SYMBOL = "SYMBOL")
 
+    #Starting to observe if tabs are clicked
+    observeEvent(input$tabs, {
+      
     # x= geneList()$data
     gene_list= geneList()
     # observe(print(class(x)))
@@ -194,7 +198,7 @@ server <- function(input, output) {
     geneListSYMB <- geneConv.df[["SYMBOL"]]
     observe(print(geneListSYMB))
     observe(print(geneConv.df))
-  
+    if(input$tabs == "tab1"){
     ### GO enrichments ------------
     # GO group enrichment
     observe(print(class(input$ontology)))
@@ -217,6 +221,7 @@ server <- function(input, output) {
         })
       }
       
+    }
     }
 
     # # Create the "universe" gene set (this is a set of all the "detected" genes)
@@ -243,6 +248,8 @@ server <- function(input, output) {
     # Convert ENSEMBL IDs to ENTREZ <===== WHY NOT USE BITR ?
     # genesENTREZ <- as.character(mapIds(input$organism, gene_list, to ="ENTREZID", from= "ENSEMBL"))
 
+    if(input$tabs == "tab2"){
+      
     genesENTREZ= geneConv.df[["ENTREZID"]]
     allOrganisms_KEGG <- c("hsa","mmu","xtr","dre","dme","cel","sce","ecok","ath")
     names(allOrganisms_KEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db",
@@ -263,15 +270,19 @@ server <- function(input, output) {
     output$barplot_ekegMDGEs <-renderPlot({
       barplot(ekegMDGEs, title = "DEGs KEGG modules enrichment")  # Only one "ribosome"
     })
+   
+    }
+    if(input$tabs == "tab4"){
     # Enrich REACTOME Pathways
     ekePDEGs <- enrichPathway(gene = genesENTREZ, organism = allOrganisms_enrichKEGG[[input$organism]], pvalueCutoff = 0.05)
     output$barplot_ekePDEGs <-renderPlot({
       barplot(ekePDEGs, showCategory = 30, title = "DEGs REACTOME Pathways enrichment")
     })
     output$dotplot_ekePDEGs <-renderPlot({
-        dotplot(ekePDEGs, showCategory = 20, title = "DEGs REACTOME Pathways enrichment")
+      dotplot(ekePDEGs, showCategory = 20, title = "DEGs REACTOME Pathways enrichment")
     })
-
+    }
+    })
   })
   })
 }  
