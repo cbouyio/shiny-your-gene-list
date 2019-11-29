@@ -2,7 +2,7 @@
 
 An R-Shiny application for the downstream analysis of gene list of interest
 
-#### Developed by [Corali Capron](https://github.com/Browco) and [Costas Bouyioukos](https://github.com/cbouyio)
+#### Developed by [Coralie Capron](https://github.com/Browco) and [Costas Bouyioukos](https://github.com/cbouyio)
 
 _________
 
