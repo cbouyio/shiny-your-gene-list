@@ -1,37 +1,22 @@
-## Welcome to GitHub Pages
+# ShinY-GL - Shiny Your Gene List
 
-You can use the [editor on GitHub](https://github.com/parisepigenetics/shiny-your-gene-list/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+An R-Shiny application for the downstream analysis of gene list of interest
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+#### Developed by [Corali Capron](https://github.com/Browco) and [Costas Bouyioukos](https://github.com/cbouyio)
 
-### Markdown
+_________
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+A simple to use R-Shiny application for the downstream gene enrichment and pathway analysis any gene list of interest.
 
-```markdown
-Syntax highlighted code block
+The application takes a simple **un-ordered** gene list, or a gene list **ordered** by any arbritary criterion of interest (expression log-Fold-Change, enrichment in peaks, as so on) and performs the following analyses:
 
-# Header 1
-## Header 2
-### Header 3
+1. Gene Ontologies enrichment
+2. Gene Set enrichments (in case an ordered list is provided)
+3. REACTOME pathway enrichment
+4. KEGG pathway enrichment
 
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/parisepigenetics/shiny-your-gene-list/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+The application creates the relative visulasation of each analysis interms of dotplots and/or barplots.
 
 ### Support or Contact
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+Contact Costas Bouyioukos at: costas.bouyioukos@u-paris.fr
