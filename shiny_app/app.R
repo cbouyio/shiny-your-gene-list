@@ -257,8 +257,8 @@ server <- function(input, output) {
 
     ###/!\ A.thaliana and E.coli are not in the list, here human and yeast were written but will give a result error
     allOrganisms_enrichKEGG = c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly","yeast","human")
-    names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db",
-                                "org.EcK12.eg.db","org.At.tair.db")
+    names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db", "org.EcK12.eg.db","org.At.tair.db")
+    #FIXME make this function available to global scope.
 
     # Enrich KEGG pathways
     ekegDEGs <- enrichKEGG(gene = genesENTREZ, organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
