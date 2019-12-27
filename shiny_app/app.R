@@ -80,25 +80,25 @@ body <- dashboardBody(
                   id = "tabset",
                   tabPanel(value= "tab1","GeneOntology enrichment", fluidRow( 
                     box(width = 12, title = "Biological Process", collapsible = TRUE, status = "primary",
-                    plotOutput("barplot_BP"),switchInput(
+                    plotOutput("plot_BP"),switchInput(
                     inputId = "switchBP",
                     value = TRUE, #true is barplot
                     onLabel = "barplot",
-                    offLabel = "dotplot")),
+                    offLabel = "dotplot"),plotOutput("cnetBP")),
                     
                     box(width = 12, title ="Molecular Function", collapsible = TRUE, status = "primary",
-                       plotOutput("barplot_MF"),switchInput(
+                       plotOutput("plot_MF"),switchInput(
                          inputId = "switchMF",
                          value = TRUE, #true is barplot
                          onLabel = "barplot",
-                         offLabel = "dotplot")),
+                         offLabel = "dotplot"),plotOutput("cnetMF")),
                     
                     box(width = 12, title = "Cellular Component", collapsible = TRUE, status = "primary",
-                        plotOutput("barplot_CC"),switchInput(
+                        plotOutput("plot_CC"),switchInput(
                           inputId = "switchCC",
                           value = TRUE, #true is barplot
                           onLabel = "barplot",
-                          offLabel = "dotplot"))
+                          offLabel = "dotplot"),plotOutput("cnetCC"))
                   )),
                     #Deal the number of cellWidths with the number of checkbox, divide 100/number and replace
                     
@@ -220,20 +220,53 @@ server <- function(input, output, session) {
           for(i in 1: length(input$ontology)){
             if(input$ontology[i] == "MF"){
               ggoDEGs_MF <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              output$barplot_MF <-renderPlot({
-                barplot(ggoDEGs_MF, showCategory = 30,  title = "GroupGO DEGs MF")
+              egoDEGs_MF <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "MF", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = univPPglu, keyType = "ENSEMBL", readable = TRUE)
+              output$cnetMF = rendePlot({
+                cnetplot(egoDEGs_MF, foldChange = geneListSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs MF")
               })
+              if (input$switchMF == TRUE){
+                output$plot_MF <-renderPlot({
+                  barplot(ggoDEGs_MF, showCategory = 30,  title = "GroupGO DEGs MF")
+                })  
+              }
+              else{
+                output$plot_MF <-renderPlot({
+                dotplot(egoDEGs_MF, title = "GO enrichment DEGs MF")
+                })
+              }
               
             }else if (input$ontology[i] == "BP"){
               ggoDEGs_BP <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              output$barplot_BP <-renderPlot({
+              egoDEGs_BP <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "BP", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = univPPglu, keyType = "ENSEMBL", readable = TRUE)
+              output$cnetBP = rendePlot({
+                cnetplot(egoDEGs_BP, foldChange = geneListSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs BP")
+              })  
+              if (input$switchBP == TRUE){
+              output$plot_BP <-renderPlot({
                 barplot(ggoDEGs_BP, showCategory = 30,  title = "GroupGO DEGs BP")
               })
+              }
+              else {
+                output$plot_BP <-renderPlot({
+                dotplot(egoDEGs_BP, title = "GO enrichment DEGs BP")
+                })
+              }
             }else if (input$ontology[i] == "CC"){
               ggoDEGs_CC <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              output$barplot_CC <-renderPlot({
-                barplot(ggoDEGs_CC, showCategory = 30,  title = "GroupGO DEGs CC")
+              egoDEGs_CC <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "CC", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = univPPglu, keyType = "ENSEMBL", pool = TRUE, readable = TRUE)
+              output$cnetCC = rendePlot({
+                cnetplot(egoDEGs_CC, foldChange = geneListSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs CC")
+                
               })
+              if (input$switchCC == TRUE){
+                output$plot_CC <-renderPlot({
+                  barplot(ggoDEGs_CC, showCategory = 30,  title = "GroupGO DEGs CC")
+                })
+              }else{
+                output$plot_CC <-renderPlot({
+                dotplot(egoDEGs_CC, title = "GO enrichment DEGs CC")
+                })
+              }
             }
             
           }
