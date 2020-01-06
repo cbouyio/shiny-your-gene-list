@@ -122,15 +122,15 @@ body <- dashboardBody(
                        tabPanel(value= "tab3","Msigdbr", fluidRow(
                          box(width = 12, title ="MSIGDB enrichment", collapsible = TRUE, status = "primary",
                              sliderInput("sliderMinMax", label="Size of genes, by default min = 50 and max = 500 ( Plot will update automatically)", min = 50, max = 1000, value=c(50,500), step = NULL),
-                             withSpinner(plotOutput("barplot_esigDEGs"), type = 5,color="#0dc5c1"),
+                             withSpinner(plotOutput("barplot_esigDEGs"), type = 5,color="#0dc5c1"),plotOutput("dotplot_esigDEGs"),
                              switchInput(
                                inputId = "switchMsigdbr",
                                value = TRUE, #true is barplot
                                onLabel = "barplot",
-                               offLabel = "dotplot"),
-                             plotOutput("dotplot_esigDEGs")),
+                               offLabel = "dotplot")
+                             ),
                          box(width = 12, title ="Gene Set enrichment", collapsible = TRUE, status = "primary",
-                             # plotOutput("dotplot_esigsDEGs")
+                             plotOutput("dotplot_esigsDEGs")
                          ))),
                        tabPanel(value= "tab4","Reactome",fluidRow(
                          box(width = 12, title ="", collapsible = TRUE, status = "primary",
@@ -189,7 +189,12 @@ server <- function(input, output, session) {
       if (sum(is.na(geneListUser()$log))<1){
         log_fold = geneListUser()$log
         all_gl = geneListUser()
+        geneListGSEA = all_gl[,2]
+        names(geneListGSEA) = as.character(all_gl[,1])
+        geneListGSEA = sort(geneListGSEA, decreasing = TRUE)
+        print(geneListGSEA)
         sorted_genelist= all_gl[order(all_gl$log,decreasing = TRUE) , ]
+        print(all_gl)
         print(sorted_genelist)
       }
       
@@ -205,16 +210,28 @@ server <- function(input, output, session) {
         geneConv.df = bitr(gene_list, fromType = input$idType,
                            toType = c(all_types[!all_types %in% input$idType]),
                            OrgDb = input$organism)
-        
         #/!\ input$idType might be different than ENSEMBL !!
         rownames(geneConv.df) <- geneConv.df[["ENSEMBL"]]
-
+        
         #remove ensembl column
         geneConv.df$ENSEMBL <- NULL
         #add only symbol elements
         geneListUserSYMB <- geneConv.df[["SYMBOL"]]
         genesENTREZ= geneConv.df[["ENTREZID"]]
-       
+        
+        
+        # geneConvGSEA.df = bitr(sorted_genelist, fromType = input$idType,
+        #                    toType = c(all_types[!all_types %in% input$idType]),
+        #                    OrgDb = input$organism)
+        # print(geneConvGSEA.df)
+        # 
+        # rownames(geneConvGSEA.df) <- geneConvGSEA.df[["ENSEMBL"]]
+        # 
+        # #remove ensembl column
+        # geneConvGSEA.df$ENSEMBL <- NULL
+        # #add only symbol elements
+        # geneListUserGSEASYMB <- geneConv.df[["SYMBOL"]]
+        
         
         #        ...And execute special command for each type of enrichment/tab
         ### Geneontology enrichment ----
@@ -236,15 +253,9 @@ server <- function(input, output, session) {
                 dotplot(egoDEGs_MF, title = "GO enrichment DEGs MF")
               })
               observeEvent(input$switchMF,{  #Show the barplot if switch button is on Barplot mode
-                if (input$switchMF == TRUE){
-                  show("barplot_MF")
-                  hide("dotplot_MF")  
-                }
-                else{
-                  show("dotplot_MF")
-                  hide("barplot_MF")  
-                  
-                }})
+                toggle(id = "barplot_MF", condition = input$switchMF == TRUE)
+                toggle(id = "dotplot_MF", condition = input$switchMF == FALSE)
+                })
               
             }else if (input$ontology[i] == "BP"){
               ggoDEGs_BP <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
@@ -260,15 +271,9 @@ server <- function(input, output, session) {
               })
               
               observeEvent(input$switchBP,{  #Show the barplot if switch button is on Barplot mode
-                if (input$switchBP == TRUE){
-                  show("barplot_BP")
-                  hide("dotplot_BP")  
-                }
-                else{
-                  show("dotplot_BP")
-                  hide("barplot_BP")  
-                  
-                }})
+                toggle(id = "barplot_BP", condition = input$switchBP == TRUE)
+                toggle(id = "dotplot_BP", condition = input$switchBP == FALSE)
+                })
             }else if (input$ontology[i] == "CC"){
               ggoDEGs_CC <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
               egoDEGs_CC <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "CC", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = names(geneListUser), keyType = "ENSEMBL", pool = TRUE, readable = TRUE)
@@ -283,15 +288,9 @@ server <- function(input, output, session) {
                 dotplot(egoDEGs_CC, title = "GO enrichment DEGs CC")
               })
               observeEvent(input$switchCC,{  #Show the barplot if switch button is on Barplot mode
-                if (input$switchCC == TRUE){
-                  show("barplot_CC")
-                  hide("dotplot_CC")  
-                }
-                else{
-                  show("dotplot_CC")
-                  hide("barplot_CC")  
-                  
-                }})
+                toggle(id = "barplot_CC", condition = input$switchCC == TRUE)
+                toggle(id = "dotplot_CC", condition = input$switchCC == FALSE)
+                })
             }
             #FIX ME : Deal with the case were no ontology is selected
             # else if (input$ontology[i] == NULL) {
@@ -318,7 +317,7 @@ server <- function(input, output, session) {
           })
           # Enrich KEGG modules
           #FIXME problem "no gene can be mapped" 
-          ekegMDGEs <- enrichMKEGG(gene = genesENTREZ, organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
+          ekegMDGEs <- enrichMKEGG(gene = as.character(genesENTREZ), organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
           # observe(print(class(genesENTREZ))) #class is character
           observe(print(genesENTREZ)) # genes are FIXF
           output$barplot_ekegMDGEs <-renderPlot({
@@ -360,23 +359,19 @@ server <- function(input, output, session) {
           })# One can play around with the set sizes to obtain something meaningfull.
           
           observeEvent(input$switchMsigdbr,{  #Show the barplot if switch button is on Barplot mode
-            if (input$switchMsigdbr == TRUE){
-              show("barplot_esigDEGs")
-              hide("dotplot_esigDEGs")  
-            }
-            else{
-              show("dotplot_esigDEGs")
-              hide("barplot_esigDEGs")  
-              
-            }})
+            toggle(id = "barplot_esigDEGs", condition = input$switchMsigdbr == TRUE)
+            toggle(id = "dotplot_esigDEGs", condition = input$switchMsigdbr == FALSE)
+            })
           
           # Gene set enrichment
-          # geneConvGSEA <- bitr(sorted_genelist$id, fromType = "ENSEMBL", toType = c("SYMBOL"), OrgDb = org.Hs.eg.db)
-          # print("geneConvGSEA")
+          # var = names(geneListGSEA)
+          # geneConvGSEA <- bitr(var, fromType = "ENSEMBL", toType = c("SYMBOL"), OrgDb = org.Hs.eg.db)
+          # 
           # print(geneConvGSEA)
-#          geneList should be a decreasing sorted vector... 
-          # esigsDEGs <- GSEA(geneConvGSEA[["SYMBOL"]], minGSSize = 20, TERM2GENE = m_df)
-          # output$dotplot_esigsDEGs = renderPlot ({ 
+          #          geneList should be a decreasing sorted vector... 
+          # geneGSEASYMB = as.character(geneConvGSEA[["SYMBOL"]])
+          # esigsDEGs <- GSEA( geneGSEASYMB, minGSSize = 20, TERM2GENE = m_df)
+          # output$dotplot_esigsDEGs = renderPlot ({
           #   dotplot(esigsDEGs, showCategory = 50, title = "DotPlot MsiGDB DEGS GSEA")
           # })
         }
