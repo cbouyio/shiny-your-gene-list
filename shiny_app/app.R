@@ -81,6 +81,15 @@ body <- dashboardBody(
                                        c("Molecular Function" = "MF",
                                          "Cellular Component" = "CC",
                                          "Biological Process" = "BP")),
+                    radioGroupButtons(
+                      inputId = "wantUniverse",
+                      label = "Do you want to upload your own Universe ? (GSEA analysis)",
+                      choices = c("Yes", "No, use default (all human genes)"),selected = "No, use default (all human genes)"
+                    ),
+                    fileInput(inputId = "universeFile",
+                              label = "Choose a universe file",
+                              accept = c(".csv")
+                    ),
                     # submit button
                     actionButton("submit", "Submit"))
               )),
@@ -151,11 +160,10 @@ ui <- dashboardPage(header = header,
 # SERVER ----------------------------------------------------------------
 
 server <- function(input, output, session) {
-  data(geneList, package="DOSE") #used here for the Universe
   # Retrieve list of genes given by hand by user  
   geneListUser = reactive({
     if(is.null(input$file)){
-      req(input$manualEntry) #check if something is written before opening it
+      req(input$manualEntry) #check if something is written in the file before opening it
       df <- read.csv(text=input$manualEntry,header=FALSE,col.names = c("id","log"),colClasses = c("character","numeric"))
       geneListUser=df
     } else {
@@ -167,6 +175,17 @@ server <- function(input, output, session) {
   })
   #  observe(print(geneListUser())) #print value in terminal
   
+  #Universe section 
+  observeEvent(input$wantUniverse,{  #Show the select universe file if button yes is selected
+    toggle(id = "universeFile", condition = input$wantUniverse == "Yes")
+    if (!input$wantUniverse == "Yes"){
+      data(geneList, package="DOSE") #used here for the Universe
+      universeList= names(geneListUser)
+    }
+    else{
+      universeList = read.table(input$universeFile)
+    }
+  })
   #Show a message window to tell the user to go to the next step when gene list is given 
   observeEvent({ 
     input$file
@@ -241,7 +260,7 @@ server <- function(input, output, session) {
             #For each radiobutton selected during the "choose your enrichment" step, plots will be created
             if(input$ontology[i] == "MF"){
               ggoDEGs_MF <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              egoDEGs_MF <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "MF", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = names(geneListUser), keyType = "ENSEMBL", readable = TRUE)
+              egoDEGs_MF <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "MF", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", readable = TRUE)
               
               #All the different outputs (cnetplot, barplot and dotplot)
               output$cnetMF = renderPlot({
@@ -276,7 +295,7 @@ server <- function(input, output, session) {
                 })
             }else if (input$ontology[i] == "CC"){
               ggoDEGs_CC <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              egoDEGs_CC <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "CC", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = names(geneListUser), keyType = "ENSEMBL", pool = TRUE, readable = TRUE)
+              egoDEGs_CC <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "CC", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", pool = TRUE, readable = TRUE)
               output$cnetCC = renderPlot({
                 cnetplot(egoDEGs_CC, foldChange = geneListUserSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs CC")
                 
