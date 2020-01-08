@@ -130,7 +130,7 @@ body <- dashboardBody(
                        
                        tabPanel(value= "tab3","Msigdbr", fluidRow(
                          box(width = 12, title ="MSIGDB enrichment", collapsible = TRUE, status = "primary",
-                             sliderInput("sliderMinMax", label="Size of genes, by default min = 50 and max = 500 ( Plot will update automatically)", min = 50, max = 1000, value=c(50,500), step = NULL),
+                             sliderInput("sliderMinMax", label="Size of genes, by default min = 10 and max = 500 ( Plot will update automatically)", min = 10, max = 1000, value=c(10,500), step = NULL),
                              withSpinner(plotOutput("barplot_esigDEGs"), type = 5,color="#0dc5c1"),plotOutput("dotplot_esigDEGs"),
                              switchInput(
                                inputId = "switchMsigdbr",
@@ -151,12 +151,9 @@ body <- dashboardBody(
     )
   )
 )
-
-
 ui <- dashboardPage(header = header, 
                     sidebar = sidebar, 
                     body = body)
-
 # SERVER ----------------------------------------------------------------
 
 server <- function(input, output, session) {
@@ -180,9 +177,12 @@ server <- function(input, output, session) {
     toggle(id = "universeFile", condition = input$wantUniverse == "Yes")
     if (!input$wantUniverse == "Yes"){
       data(geneList, package="DOSE") #used here for the Universe
-      universeList= names(geneListUser)
+      gl =geneListUser()
+      universeList= names(gl)
     }
-    else{
+    else if(input$wantUniverse == "Yes") {
+      # inFileuniverse <- input$universeFile
+      req(input$universeFile)
       universeList = read.table(input$universeFile)
     }
   })
@@ -216,8 +216,6 @@ server <- function(input, output, session) {
         print(all_gl)
         print(sorted_genelist)
       }
-      
-      
       all_types = c(ENTREZ = "ENTREZID",
                     ENSEMBL = "ENSEMBL",
                     SYMBOL = "SYMBOL")
