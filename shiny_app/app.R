@@ -35,7 +35,7 @@ sidebar <- dashboardSidebar(
 )
 ## body ----
 body <- dashboardBody(
-  fluidPage(titlePanel("Genes List Analysis using Shiny Server"),
+  fluidPage(titlePanel("Gene List Analysis using Shiny Server"),
     useShinyjs(), #set up shinyjs, useful to show or hide barplot/dotplot
     tabItems(
       tabItem(tabName = "datafile",
@@ -63,7 +63,7 @@ body <- dashboardBody(
                 box(width = 12,
                     selectInput("organism", "Select organism", 
                                 list("Vertebrate"  = c("Human (Homo sapiens)"="org.Hs.eg.db","Mouse (Mus musculus)"="org.Mm.eg.db",
-                                                       "Western clawed frog (Xenopus tropicalis)"="org.Xl.eg.db","Zebrafish (Danio rerio)"="org.Dr.eg.db"
+                                    "Western clawed frog (Xenopus tropicalis)"="org.Xl.eg.db","Zebrafish (Danio rerio)"="org.Dr.eg.db"
                                 ),
                                 "Eukaryotic" = c("Fruit fly (Drosophila melanogaster)"="org.Dm.eg.db",
                                                  "Nematode worm (Caenorhabditis elegans)"="org.Ce.eg.db","Yeast (Saccharomyces cerevisiae)"="org.Sc.sgd.db"),
@@ -130,7 +130,8 @@ body <- dashboardBody(
                        
                        tabPanel(value= "tab3","Msigdbr", fluidRow(
                          box(width = 12, title ="MSIGDB enrichment", collapsible = TRUE, status = "primary",
-                             sliderInput("sliderMinMax", label="Size of genes, by default min = 10 and max = 500 ( Plot will update automatically)", min = 10, max = 1000, value=c(10,500), step = NULL),
+                             sliderInput("sliderMinMax", label="Size of genes, by default min = 10 and max = 500 ( Plot will update automatically)", 
+                                         min = 10, max = 1000, value=c(10,500), step = NULL),
                              withSpinner(plotOutput("barplot_esigDEGs"), type = 5,color="#0dc5c1"),plotOutput("dotplot_esigDEGs"),
                              switchInput(
                                inputId = "switchMsigdbr",
@@ -147,7 +148,8 @@ body <- dashboardBody(
                              plotOutput("dotplot_ekePDEGs"))))
                        
                 ))
-      )
+      ),
+      tabItem(tabName = "about", uiOutput("md_file") )
     )
   )
 )
@@ -155,10 +157,12 @@ body <- dashboardBody(
 ui <- dashboardPage(header = header,
                     sidebar = sidebar, 
                     body = body,
-                    title = "G.L.A.S.S : Genes List Analysis using Shiny Server")
+                    title = "G.L.A.S.S : Gene List Analysis using Shiny Server")
 # SERVER ----------------------------------------------------------------
 
 server <- function(input, output, session) {
+  #About section
+  output$md_file <- renderUI({includeMarkdown("About_section.md")})
   # Retrieve list of genes given by hand by user  
   geneListUser = reactive({
     if(is.null(input$file)){
@@ -172,19 +176,15 @@ server <- function(input, output, session) {
     }
     return(geneListUser)
   })
-  #  observe(print(geneListUser())) #print value in terminal
-  observe(print(names(geneListUser)))
+
   #Universe section 
+  universeList = NULL 
   observeEvent(input$wantUniverse,{  #Show the select universe file if button yes is selected
     toggle(id = "universeFile", condition = input$wantUniverse == "Yes")
     if (!input$wantUniverse == "Yes"){
-      data(geneList, package="DOSE") #used here for the Universe
-      print("ok")
+      # data(geneList, package="DOSE") #used here for the Universe
       req(geneListUser())
-      print(names(gl))
-      observe(print(geneListUser()))
-      gl =geneListUser()
-      universeList= geneListUser()$id
+      universeList = names(geneListUser)
     }
     else if(input$wantUniverse == "Yes") {
       # inFileuniverse <- input$universeFile
@@ -192,6 +192,7 @@ server <- function(input, output, session) {
       universeList = read.table(input$universeFile)
     }
   })
+  
   #Show a message window to tell the user to go to the next step when gene list is given 
   observeEvent({ 
     input$file
@@ -201,26 +202,26 @@ server <- function(input, output, session) {
   {     if (!is.null(input$file) && !is.null(input$manualEntry))
     showNotification(paste("Now choose your enrichment in the sidebar"), duration = 5, type = "message") } )
   
+  ####Parameters selected ##
   observe({text_reactive()}) #text_reactive is always updated
   text_reactive <- eventReactive( input$submit, {
     # Isolate the reactive values to store them and manipulate them 
     isolate({
       ###Format of the IDs ?
       req(geneListUser()) #if exists
-      
       gene_list= geneListUser()$id
       
       #If there is a one column gene list (unordered) or two column (ordered with a logFoldChange)
       if (sum(is.na(geneListUser()$log))<1){
-        log_fold = geneListUser()$log
         all_gl = geneListUser()
-        geneListGSEA = all_gl[,2]
-        names(geneListGSEA) = as.character(all_gl[,1])
+        geneListGSEASYMB = bitr(all_gl[,1], fromType = input$idType,
+                           toType = "SYMBOL",
+                           OrgDb = input$organism)
+        #We need to associate symbols generated by bitr with metrics given in the genes list through the gene id type
+        geneList2idsGSEA = merge(x= geneListGSEASYMB,y= all_gl,by.x= input$idType, by.y = "id")
+        geneListGSEA = geneList2idsGSEA[,3]
+        names(geneListGSEA) = as.character(geneList2idsGSEA[,2])
         geneListGSEA = sort(geneListGSEA, decreasing = TRUE)
-        print(geneListGSEA)
-        sorted_genelist= all_gl[order(all_gl$log,decreasing = TRUE) , ]
-        print(all_gl)
-        print(sorted_genelist)
       }
       all_types = c(ENTREZ = "ENTREZID",
                     ENSEMBL = "ENSEMBL",
@@ -229,33 +230,18 @@ server <- function(input, output, session) {
       #Starting to observe if tabs are clicked...
       observeEvent(input$tabset,{
         
-        
         geneConv.df = bitr(gene_list, fromType = input$idType,
                            toType = c(all_types[!all_types %in% input$idType]),
                            OrgDb = input$organism)
+        
         #/!\ input$idType might be different than ENSEMBL !!
         rownames(geneConv.df) <- geneConv.df[["ENSEMBL"]]
-        
         #remove ensembl column
         geneConv.df$ENSEMBL <- NULL
         #add only symbol elements
         geneListUserSYMB <- geneConv.df[["SYMBOL"]]
         genesENTREZ= geneConv.df[["ENTREZID"]]
-        
-        
-        # geneConvGSEA.df = bitr(sorted_genelist, fromType = input$idType,
-        #                    toType = c(all_types[!all_types %in% input$idType]),
-        #                    OrgDb = input$organism)
-        # print(geneConvGSEA.df)
-        # 
-        # rownames(geneConvGSEA.df) <- geneConvGSEA.df[["ENSEMBL"]]
-        # 
-        # #remove ensembl column
-        # geneConvGSEA.df$ENSEMBL <- NULL
-        # #add only symbol elements
-        # geneListUserGSEASYMB <- geneConv.df[["SYMBOL"]]
-        
-        
+
         #        ...And execute special command for each type of enrichment/tab
         ### Geneontology enrichment ----
         if(input$tabset == "tab1"){
@@ -263,6 +249,7 @@ server <- function(input, output, session) {
           for(i in 1: length(input$ontology)){
             #For each radiobutton selected during the "choose your enrichment" step, plots will be created
             if(input$ontology[i] == "MF"){
+              
               ggoDEGs_MF <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
               egoDEGs_MF <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "MF", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", readable = TRUE)
               
@@ -282,8 +269,7 @@ server <- function(input, output, session) {
               
             }else if (input$ontology[i] == "BP"){
               ggoDEGs_BP <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
-              print(names(geneListUser))
-              egoDEGs_BP <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "BP", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = names(geneListUser), keyType = "ENSEMBL", readable = TRUE)
+              egoDEGs_BP <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "BP", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", readable = TRUE)
               output$cnetBP = renderPlot({
                 cnetplot(egoDEGs_BP, foldChange = geneListUserSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs BP")
               })
@@ -316,18 +302,9 @@ server <- function(input, output, session) {
                 toggle(id = "dotplot_CC", condition = input$switchCC == FALSE)
                 })
             }
-            #FIX ME : Deal with the case were no ontology is selected
-            # else if (input$ontology[i] == NULL) {
-            #   break
-            # }
-            
           }
         }
-        
-        # Convert ENSEMBL IDs to ENTREZ <===== WHY NOT USE BITR ?
-        # genesENTREZ <- as.character(mapIds(input$organism, gene_list, to ="ENTREZID", from= "ENSEMBL"))
-        
-        ### KEGG pathway enrichment (FIXME) ----
+        ### KEGG pathway enrichment ----
         if(input$tabset == "tab2"){
           #all organisms, here the organisms might be the one selected by the user during the "choose your enrichment" step
           allOrganisms_KEGG <- c("hsa","mmu","xtr","dre","dme","cel","sce","ecok","ath")
@@ -340,14 +317,19 @@ server <- function(input, output, session) {
             barplot(ekegDEGs, title = "DEGs KEGG enrichment")  # Only one "ribosome"
           })
           # Enrich KEGG modules
-          #FIXME problem "no gene can be mapped" 
           ekegMDGEs <- enrichMKEGG(gene = as.character(genesENTREZ), organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
-          # observe(print(class(genesENTREZ))) #class is character
-          observe(print(genesENTREZ)) # genes are FIXF
-          output$barplot_ekegMDGEs <-renderPlot({
-            barplot(ekegMDGEs, title = "DEGs KEGG modules enrichment")  # Only one "ribosome"
-          })
-          
+          if (is.null(ekegMDGEs)){
+            showModal(modalDialog(
+              title = "About enrichMKEGG",
+              "No KEGG enrichment modules can be found",
+              easyClose = TRUE
+            ))
+          }
+          else{
+            output$barplot_ekegMDGEs <-renderPlot({
+              barplot(ekegMDGEs, title = "DEGs KEGG modules enrichment")  # Only one "ribosome"
+            })
+          }
         }
         ### Msigdbr ----
         if(input$tabset == "tab3"){
@@ -359,10 +341,6 @@ server <- function(input, output, session) {
               easyClose = TRUE
             ))
           }
-          #geneConv2 <- bitr(names(geneList), fromType = "ENSEMBL", toType = c("SYMBOL"), OrgDb = org.Hs.eg.db)
-          #observe(print(head(geneConv2)))
-          #univPPglu2 <- geneConv2[["SYMBOL"]]
-          
           ## MSIGDB enrichment
           allOrganisms_Msigdbr <- c("Homo sapiens" ,"Mus musculus","Danio rerio","Drosophila melanogaster","Caenorhabditis elegans","Saccharomyces cerevisiae")
           names(allOrganisms_Msigdbr)= c("org.Hs.eg.db","org.Mm.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db")
@@ -380,24 +358,26 @@ server <- function(input, output, session) {
             output$dotplot_esigDEGs = renderPlot ({
               dotplot(esigDEGs, showCategory = 50, title = "DotPlot DEGs MsiGDB enrichment")
             })
-          })# One can play around with the set sizes to obtain something meaningfull.
-          
+          })
           observeEvent(input$switchMsigdbr,{  #Show the barplot if switch button is on Barplot mode
             toggle(id = "barplot_esigDEGs", condition = input$switchMsigdbr == TRUE)
             toggle(id = "dotplot_esigDEGs", condition = input$switchMsigdbr == FALSE)
             })
           
           # Gene set enrichment
-          # var = names(geneListGSEA)
-          # geneConvGSEA <- bitr(var, fromType = "ENSEMBL", toType = c("SYMBOL"), OrgDb = org.Hs.eg.db)
-          # 
-          # print(geneConvGSEA)
-          #          geneList should be a decreasing sorted vector... 
-          # geneGSEASYMB = as.character(geneConvGSEA[["SYMBOL"]])
-          # esigsDEGs <- GSEA( geneGSEASYMB, minGSSize = 20, TERM2GENE = m_df)
-          # output$dotplot_esigsDEGs = renderPlot ({
-          #   dotplot(esigsDEGs, showCategory = 50, title = "DotPlot MsiGDB DEGS GSEA")
-          # })
+          esigsDEGs <- GSEA(geneListGSEA, minGSSize = 20, TERM2GENE = m_df)
+          if(is.null(esigsDEGs)){
+            showModal(modalDialog(
+              title = "About Gene Set Enrichment Analysis",
+              "No term enriched",
+              easyClose = TRUE
+            ))
+          }
+          else{
+            output$dotplot_esigsDEGs = renderPlot ({
+              dotplot(esigsDEGs, showCategory = 50, title = "DotPlot MsiGDB DEGS GSEA")
+            })    
+          }
         }
         # 
         ### Reactome ----
@@ -405,7 +385,8 @@ server <- function(input, output, session) {
           # Enrich REACTOME Pathways
           ###/!\ A.thaliana and E.coli are not in the list, here human and yeast were written twice but will give a result error
           allOrganisms_enrichKEGG = c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly","yeast","human")
-          names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db", "org.EcK12.eg.db","org.At.tair.db")
+          names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db",
+                                            "org.Ce.eg.db","org.Sc.sgd.db", "org.EcK12.eg.db","org.At.tair.db")
           
           ekePDEGs <- enrichPathway(gene = genesENTREZ, organism = allOrganisms_enrichKEGG[[input$organism]], pvalueCutoff = 0.05)
           output$barplot_ekePDEGs <-renderPlot({
