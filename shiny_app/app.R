@@ -21,21 +21,21 @@ library(shinyjs) #show/hide barplot/dotplot in GOenrichment
 # UI ---------------------------------------------------------------- 
 ## header ----
 header <- dashboardHeader(
-  title = "Shiny your gene list"
+  title = "G.L.A.S.S"
 )
 ## sidebar ---- 
 sidebar <- dashboardSidebar(
   sidebarMenu(id="tabs",
-              menuItem(text = "Importing file", tabName = "datafile",icon = icon("file")
+              menuItem(text = "Import data", tabName = "datafile",icon = icon("file")
               ),
-              menuItem("Enrichment", tabName = "enrichoose", icon = icon("dna")),
+              menuItem("Enrichments parameters", tabName = "enrichoose", icon = icon("dna")),
               menuItem("Analysis", tabName = "analysis", icon = icon("clipboard-check")),
               menuItem("About", tabName = "about", icon = icon("info-circle"))
   )
 )
 ## body ----
 body <- dashboardBody(
-  fluidPage(
+  fluidPage(titlePanel("Genes List Analysis using Shiny Server"),
     useShinyjs(), #set up shinyjs, useful to show or hide barplot/dotplot
     tabItems(
       tabItem(tabName = "datafile",
@@ -77,7 +77,7 @@ body <- dashboardBody(
                                              "COMMON NAME" = "COMMON"),
                                  selected = "ENSEMBL"),
                     
-                    checkboxGroupInput("ontology", "Ontologies",
+                    checkboxGroupInput("ontology", "Ontologies (Select at least one of them)",
                                        c("Molecular Function" = "MF",
                                          "Cellular Component" = "CC",
                                          "Biological Process" = "BP")),
@@ -151,9 +151,11 @@ body <- dashboardBody(
     )
   )
 )
-ui <- dashboardPage(header = header, 
+
+ui <- dashboardPage(header = header,
                     sidebar = sidebar, 
-                    body = body)
+                    body = body,
+                    title = "G.L.A.S.S : Genes List Analysis using Shiny Server")
 # SERVER ----------------------------------------------------------------
 
 server <- function(input, output, session) {
@@ -171,14 +173,18 @@ server <- function(input, output, session) {
     return(geneListUser)
   })
   #  observe(print(geneListUser())) #print value in terminal
-  
+  observe(print(names(geneListUser)))
   #Universe section 
   observeEvent(input$wantUniverse,{  #Show the select universe file if button yes is selected
     toggle(id = "universeFile", condition = input$wantUniverse == "Yes")
     if (!input$wantUniverse == "Yes"){
       data(geneList, package="DOSE") #used here for the Universe
+      print("ok")
+      req(geneListUser())
+      print(names(gl))
+      observe(print(geneListUser()))
       gl =geneListUser()
-      universeList= names(gl)
+      universeList= geneListUser()$id
     }
     else if(input$wantUniverse == "Yes") {
       # inFileuniverse <- input$universeFile
@@ -276,6 +282,7 @@ server <- function(input, output, session) {
               
             }else if (input$ontology[i] == "BP"){
               ggoDEGs_BP <- groupGO(gene = gene_list, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
+              print(names(geneListUser))
               egoDEGs_BP <- enrichGO(gene = gene_list, OrgDb = input$organism, ont = "BP", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = names(geneListUser), keyType = "ENSEMBL", readable = TRUE)
               output$cnetBP = renderPlot({
                 cnetplot(egoDEGs_BP, foldChange = geneListUserSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs BP")
