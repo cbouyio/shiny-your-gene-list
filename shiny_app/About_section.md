@@ -5,7 +5,7 @@ This project was written in order to analyze a list of genes of interest. To bet
 Two types of gene lists are supported, ordered lists and unordered lists.
 
 ## License
-
+GNU General Public License v3.0
 ## Version
 This is the first version of G.L.A.S.S
 ## Authors
