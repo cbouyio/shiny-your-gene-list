@@ -1,19 +1,19 @@
-# G.L.A.S.S : Gene List Analysis using Shiny Server
-#Authors : Coralie Capron and Costas Bouyioukos
+# ShinYGLOI Shiny Your Gene List Of Interest
+# Authors: Coralie Capron and Costas Bouyioukos
 
 #Please use the Rstudio group code section to navigate through the code
 # IMPORT PACKAGES ---------
 library(shiny)
 library(shinydashboard)
-library(org.At.tair.db) #ataliana
-library(org.Ce.eg.db) #celegans
-library(org.Dm.eg.db) #dmelanogaster
-library(org.Dr.eg.db) #drerio
-library(org.EcK12.eg.db) #ecoli straink12
+#library(org.At.tair.db) #ataliana
+#library(org.Ce.eg.db) #celegans
+#library(org.Dm.eg.db) #dmelanogaster
+#library(org.Dr.eg.db) #drerio
+#library(org.EcK12.eg.db) #ecoli straink12
 library(org.Hs.eg.db) #hsapiens
-library(org.Mm.eg.db) #mmusculus
-library(org.Sc.sgd.db) #scerevisiae
-library(org.Xl.eg.db) #xenopus
+#library(org.Mm.eg.db) #mmusculus
+#library(org.Sc.sgd.db) #scerevisiae
+#library(org.Xl.eg.db) #xenopus
 library(clusterProfiler)
 library(ReactomePA) #enrichpathway
 library(msigdbr) #msigdbr analysis
@@ -22,24 +22,27 @@ library(shinyWidgets) #switch button dotplot or barplot
 library(ggplot2) #used for cnet plot
 library(shinyjs) #show/hide barplot/dotplot in GOenrichment
 
-# UI ---------------------------------------------------------------- 
+# UI ----------------------------------------------------------------
+
 ## header ----
 header <- dashboardHeader(
-  title = "G.L.A.S.S"
+  title = "ShinYGLOI"
 )
-## sidebar ---- 
+
+## sidebar ----
 sidebar <- dashboardSidebar(
   sidebarMenu(id="tabs",
               menuItem(text = "Import data", tabName = "datafile",icon = icon("file")
               ),
-              menuItem("Enrichments parameters", tabName = "enrichoose", icon = icon("dna")),
+              menuItem("Enrichment parameters", tabName = "enrichoose", icon = icon("dna")),
               menuItem("Analysis", tabName = "analysis", icon = icon("clipboard-check")),
               menuItem("About", tabName = "about", icon = icon("info-circle"))
   )
 )
+
 ## body ----
 body <- dashboardBody(
-  fluidPage(titlePanel("Gene List Analysis using Shiny Server"),
+  fluidPage(titlePanel("ShinYGLOI"),
     useShinyjs(), #set up shinyjs, useful to show or hide barplot/dotplot
     tabItems(
       tabItem(tabName = "datafile",
@@ -58,14 +61,14 @@ body <- dashboardBody(
                                   value = NULL ,
                                   width = "250px",
                                   resize = "both", placeholder ="geneID1\ngeneID2 ",),
-                    
-                    helpText("Write an ordered or unordered list of genes lines by lines with the same separator"),
+
+                    helpText("Write an ordered or unordered list of genes line by line with the same separator"),
                     verbatimTextOutput("Manual"), #Will allow the attribution of manualEntry in var output$value)
                 ))),
       tabItem(tabName = "enrichoose",
               fluidRow(
                 box(width = 12,
-                    selectInput("organism", "Select organism", 
+                    selectInput("organism", "Select organism",
                                 list("Vertebrate"  = c("Human (Homo sapiens)"="org.Hs.eg.db","Mouse (Mus musculus)"="org.Mm.eg.db",
                                     "Western clawed frog (Xenopus tropicalis)"="org.Xl.eg.db","Zebrafish (Danio rerio)"="org.Dr.eg.db"
                                 ),
@@ -73,21 +76,21 @@ body <- dashboardBody(
                                                  "Nematode worm (Caenorhabditis elegans)"="org.Ce.eg.db","Yeast (Saccharomyces cerevisiae)"="org.Sc.sgd.db"),
                                 "Prokaryotic" = c("Bacteria (Escherichia coli)"="org.EcK12.eg.db"),
                                 "Plantae" = c("Angiosperma (Arabidopsis thaliana)"="org.At.tair.db")), selected = NULL, multiple = FALSE),
-                    
+
                     radioButtons("idType", "Gene identifier type",
                                  choices = c(ENTREZ = "ENTREZID",
                                              ENSEMBL = "ENSEMBL",
                                              SYMBOL = "SYMBOL"
                                              ),
                                  selected = "ENSEMBL"),
-                    
+
                     checkboxGroupInput("ontology", "Ontologies (Select at least one of them)",
                                        c("Molecular Function" = "MF",
                                          "Cellular Component" = "CC",
                                          "Biological Process" = "BP")),
                     radioGroupButtons(
                       inputId = "wantUniverse",
-                      label = "Do you want to upload your own Universe ? (GSEA analysis)",
+                      label = "Do you want to upload your own universe? (GSEA analysis)",
                       choices = c("Yes", "No, use default (all human genes)"),selected = "No, use default (all human genes)"
                     ),
                     fileInput(inputId = "universeFile",
@@ -102,22 +105,22 @@ body <- dashboardBody(
                 tabBox(width=12,title = "Enrichment analysis",
                        # The id lets us use input$tabset1 on the server to find the current tab
                        id = "tabset",
-                       tabPanel(value= "tab1","GeneOntology enrichment", fluidRow( 
-                         
+                       tabPanel(value= "tab1","GeneOntology enrichment", fluidRow(
+
                          box(width = 12, title = "Biological Process", collapsible = TRUE, status = "primary",
                              withSpinner(plotOutput("barplot_BP"), type = 5,color="#0dc5c1"), plotOutput("dotplot_BP"),switchInput(
                                inputId = "switchBP",
                                value = TRUE, #true is barplot
                                onLabel = "barplot",
                                offLabel = "dotplot"),plotOutput("cnetBP")),
-                         
+
                          box(width = 12, title ="Molecular Function", collapsible = TRUE, status = "primary",
                              withSpinner(plotOutput("barplot_MF"), type = 5,color="#0dc5c1"), plotOutput("dotplot_MF"), switchInput(
                                inputId = "switchMF",
                                value = TRUE, #true is barplot
                                onLabel = "barplot",
                                offLabel = "dotplot"),plotOutput("cnetMF")),
-                         
+
                          box(width = 12, title = "Cellular Component", collapsible = TRUE, status = "primary",
                              withSpinner(plotOutput("barplot_CC"), type = 5,color="#0dc5c1"), plotOutput("dotplot_CC"),switchInput(
                                inputId = "switchCC",
@@ -129,12 +132,10 @@ body <- dashboardBody(
                          box(width = 12, title ="KEGG enrichment", collapsible = TRUE, status = "primary",
                              withSpinner(plotOutput("barplot_ekegDEGs"), type = 5,color="#0dc5c1"),
                              plotOutput("barplot_ekegMDGEs")),
-                       )),        
-                       
-                       
+                       )),
                        tabPanel(value= "tab3","Msigdbr", fluidRow(
                          box(width = 12, title ="Universal enrichment", collapsible = TRUE, status = "primary",
-                             sliderInput("sliderMinMax", label="Size of genes, by default min = 10 and max = 500 ( Plot will update automatically)", 
+                             sliderInput("sliderMinMax", label="Size of genes, by default min = 10 and max = 500 ( Plot will update automatically)",
                                          min = 10, max = 1000, value=c(10,500), step = NULL),
                              withSpinner(plotOutput("barplot_esigDEGs"), type = 5,color="#0dc5c1"),plotOutput("dotplot_esigDEGs"),
                              switchInput(
@@ -150,7 +151,7 @@ body <- dashboardBody(
                          box(width = 12, title ="", collapsible = TRUE, status = "primary",
                              withSpinner(plotOutput("barplot_ekePDEGs"),type = 5,color="#0dc5c1"),
                              plotOutput("dotplot_ekePDEGs"))))
-                       
+
                 ))
       ),
       tabItem(tabName = "about", uiOutput("md_file") ) #Use a markdown file as "About section"
@@ -159,16 +160,16 @@ body <- dashboardBody(
 )
 
 ui <- dashboardPage(header = header,
-                    sidebar = sidebar, 
+                    sidebar = sidebar,
                     body = body,
-                    title = "G.L.A.S.S : Gene List Analysis using Shiny Server")
+                    title = "ShinYLOI: Shiny Your Gene List Of Interest")
 # SERVER ----------------------------------------------------------------
 
 server <- function(input, output, session) {
   #About section
   output$md_file <- renderUI({includeMarkdown("About_section.md")})
-  
-  # Retrieve list of genes given by hand by user  
+
+  # Retrieve list of genes given by hand by user
   geneListUser = reactive({
     if(is.null(input$file)){
       req(input$manualEntry) #check if something is written in the file before opening it
@@ -182,8 +183,8 @@ server <- function(input, output, session) {
     return(geneListUser)
   })
 
-  # Universe section 
-  universeList = NULL 
+  # Universe section
+  universeList = NULL
   observeEvent(input$wantUniverse,{  #Show the select universe file if button yes is selected
     toggle(id = "universeFile", condition = input$wantUniverse == "Yes")
     if (!input$wantUniverse == "Yes"){
@@ -195,25 +196,25 @@ server <- function(input, output, session) {
       universeList = read.table(input$universeFile)
     }
   })
-  
-  #Show a message window to tell the user to go to the next step when gene list is given 
-  observeEvent({ 
+
+  #Show a message window to tell the user to go to the next step when gene list is given
+  observeEvent({
     input$file
     input$manualEntry
     1
-  }, 
+  },
   {     if (!is.null(input$file) && !is.null(input$manualEntry))
     showNotification(paste("Now choose your enrichment in the sidebar"), duration = 5, type = "message") } )
-  
+
   ####Parameters selected ##
   observe({text_reactive()}) #text_reactive is always updated
   text_reactive <- eventReactive(input$submit, {
-    # Isolate the reactive values to store them and manipulate them 
+    # Isolate the reactive values to store them and manipulate them
     isolate({
       ###Format of the IDs ?
       req(geneListUser()) #if exists
       gene_list= geneListUser()$id
-      
+
       #If there is a one column gene list (unordered) or two column (ordered with a logFoldChange)
       if (sum(is.na(geneListUser()$log))<1){
         all_gl = geneListUser() #to manipulate a reactive value you must store it into a variable
@@ -232,14 +233,14 @@ server <- function(input, output, session) {
       all_types = c(ENTREZ = "ENTREZID",
                     ENSEMBL = "ENSEMBL",
                     SYMBOL = "SYMBOL")
-      
+
       # Starting to observe if tabs are clicked...
       observeEvent(input$tabset,{
         #Convert the gene list into most used types of genes ids
         geneConv.df = bitr(gene_list, fromType = input$idType,
                            toType = c(all_types[!all_types %in% input$idType]),
                            OrgDb = input$organism)
-        
+
         rownames(geneConv.df) <- geneConv.df[["ENSEMBL"]]
         genesENSEMBL= geneConv.df[["ENSEMBL"]]
         #remove ensembl column
@@ -247,7 +248,7 @@ server <- function(input, output, session) {
         #add only symbol elements
         geneListUserSYMB <- geneConv.df[["SYMBOL"]]
         genesENTREZ= geneConv.df[["ENTREZID"]]
-        
+
         # ...And execute special command for each type of enrichment/tab
         ### Geneontology enrichment ----
         if(input$tabset == "tab1"){
@@ -255,10 +256,10 @@ server <- function(input, output, session) {
           for(i in 1: length(input$ontology)){
             #For each radiobutton selected during the "choose your enrichment" step, plots will be created
             if(input$ontology[i] == "MF"){
-              
+
               ggoDEGs_MF <- groupGO(gene = genesENSEMBL, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
               egoDEGs_MF <- enrichGO(gene = genesENSEMBL, OrgDb = input$organism, ont = "MF", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", readable = TRUE)
-              
+
               #All the different outputs (cnetplot, barplot and dotplot)
               output$cnetMF = renderPlot({
                 cnetplot(egoDEGs_MF, foldChange = geneListUserSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs MF")
@@ -272,7 +273,7 @@ server <- function(input, output, session) {
                 toggle(id = "barplot_MF", condition = input$switchMF == TRUE)
                 toggle(id = "dotplot_MF", condition = input$switchMF == FALSE)
                 })
-              
+
             }else if (input$ontology[i] == "BP"){
               ggoDEGs_BP <- groupGO(gene = genesENSEMBL, OrgDb = input$organism, ont = input$ontology[i], level = 2, keyType = "ENSEMBL", readable = TRUE)
               egoDEGs_BP <- enrichGO(gene = genesENSEMBL, OrgDb = input$organism, ont = "BP", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", readable = TRUE)
@@ -285,7 +286,7 @@ server <- function(input, output, session) {
               output$dotplot_BP <-renderPlot({
                 dotplot(egoDEGs_BP, title = "GO enrichment DEGs BP")
               })
-              
+
               observeEvent(input$switchBP,{  #Show the barplot if switch button is on Barplot mode
                 toggle(id = "barplot_BP", condition = input$switchBP == TRUE)
                 toggle(id = "dotplot_BP", condition = input$switchBP == FALSE)
@@ -295,7 +296,7 @@ server <- function(input, output, session) {
               egoDEGs_CC <- enrichGO(gene = genesENSEMBL, OrgDb = input$organism, ont = "CC", pAdjustMethod = "BH", pvalueCutoff = 0.05, universe = universeList, keyType = "ENSEMBL", pool = TRUE, readable = TRUE)
               output$cnetCC = renderPlot({
                 cnetplot(egoDEGs_CC, foldChange = geneListUserSYMB, colorEdge = TRUE, showCategory = 10) + ggtitle("CNETplot GOenrich DEGs CC")
-                
+
               })
               output$barplot_CC <-renderPlot({
                 barplot(ggoDEGs_CC, showCategory = 30,  title = "GroupGO DEGs CC")
@@ -310,13 +311,13 @@ server <- function(input, output, session) {
             }
           }
         }
+
         ### KEGG pathway enrichment ----
         if(input$tabset == "tab2"){
           #all organisms, here the organisms might be the one selected by the user during the "choose your enrichment" step
-          allOrganisms_KEGG <- c("hsa","mmu","xtr","dre","dme","cel","sce","ecok","ath")
-          names(allOrganisms_KEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db",
-                                      "org.EcK12.eg.db","org.At.tair.db")
-          
+          allOrganisms_KEGG <- c("hsa", "mmu", "xtr", "dre", "dme", "cel", "sce", "ecok", "ath")
+          names(allOrganisms_KEGG)= c("org.Hs.eg.db", "org.Mm.eg.db", "org.Xl.eg.db", "org.Dr.eg.db", "org.Dm.eg.db", "org.Ce.eg.db", "org.Sc.sgd.db", "org.EcK12.eg.db", "org.At.tair.db")
+
           # Enrich KEGG pathways
           ekegDEGs <- enrichKEGG(gene = genesENTREZ, organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
           print(ekegDEGs)
@@ -327,8 +328,7 @@ server <- function(input, output, session) {
           ekegMDGEs <- enrichMKEGG(gene = as.character(genesENTREZ), organism = allOrganisms_KEGG[[input$organism]], pvalueCutoff = 0.05)
           if (is.null(ekegMDGEs)){
             showModal(modalDialog(
-              title = "About enrichMKEGG",
-              "No KEGG enrichment modules can be found",
+              title = "About enrichMKEGG", "No KEGG enrichment modules can be found",
               easyClose = TRUE
             ))
           }
@@ -338,22 +338,23 @@ server <- function(input, output, session) {
             })
           }
         }
+
         ### Msigdbr ----
         if(input$tabset == "tab3"){
           if (sum(is.na(geneListUser()$log))>1){
             showModal(modalDialog(
-              title = "About Gene Set Enrichment",
-              "GSEA cannot work with an unordered list, please change the input genes list",
+              title = "About Gene Set Enrichment", "GSEA cannot work with an unordered list, please change the input genes list",
               easyClose = TRUE
             ))
           }
+
           ## MSIGDB enrichment
-          allOrganisms_Msigdbr <- c("Homo sapiens" ,"Mus musculus","Danio rerio","Drosophila melanogaster","Caenorhabditis elegans","Saccharomyces cerevisiae")
-          names(allOrganisms_Msigdbr)= c("org.Hs.eg.db","org.Mm.eg.db","org.Dr.eg.db","org.Dm.eg.db","org.Ce.eg.db","org.Sc.sgd.db")
-          
+          allOrganisms_Msigdbr <- c("Homo sapiens", "Mus musculus", "Danio rerio", "Drosophila melanogaster", "Caenorhabditis elegans", "Saccharomyces cerevisiae")
+          names(allOrganisms_Msigdbr)= c("org.Hs.eg.db", "org.Mm.eg.db", "org.Dr.eg.db", "org.Dm.eg.db", "org.Ce.eg.db", "org.Sc.sgd.db")
+
           m_df <- msigdbr(species = allOrganisms_Msigdbr[[input$organism]])
-          m_df$gs_id <- m_df$gene_symbol 
-          
+          m_df$gs_id <- m_df$gene_symbol
+
           # Gene enrichment
           #By default universe for enricher will be all the genes for the selected species
           #the slider will determine the min and max gene size if customized by user
@@ -370,34 +371,31 @@ server <- function(input, output, session) {
             toggle(id = "barplot_esigDEGs", condition = input$switchMsigdbr == TRUE)
             toggle(id = "dotplot_esigDEGs", condition = input$switchMsigdbr == FALSE)
             })
-          
+
           # Gene set enrichment
           #if geneListGSEA exists then run GSEA
           if (!is.null(geneListGSEA)){
             esigsDEGs <- GSEA(geneListGSEA, minGSSize = 20, TERM2GENE = m_df)
             if(is.null(esigsDEGs)){
               showModal(modalDialog(
-                title = "About Gene Set Enrichment Analysis",
-                "No term enriched",
+                title = "About Gene Set Enrichment Analysis", "No term enriched",
                 easyClose = TRUE
               ))
             }
             else{
               output$dotplot_esigsDEGs = renderPlot ({
                 dotplot(esigsDEGs, showCategory = 50, title = "DotPlot MsiGDB DEGS GSEA")
-              })    
+              })
             }
           }
         }
-        # 
+        #
         ### Reactome ----
         if(input$tabset == "tab4"){
           # Enrich REACTOME Pathways
           ###/!\ A.thaliana and E.coli are not in the list, here human and yeast were written twice but will give a result error
-          allOrganisms_enrichKEGG = c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly","yeast","human")
-          names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db","org.Mm.eg.db","org.Xl.eg.db","org.Dr.eg.db","org.Dm.eg.db",
-                                            "org.Ce.eg.db","org.Sc.sgd.db", "org.EcK12.eg.db","org.At.tair.db")
-          
+          allOrganisms_enrichKEGG = c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly", "yeast", "human")
+          names(allOrganisms_enrichKEGG)= c("org.Hs.eg.db", "org.Mm.eg.db", "org.Xl.eg.db", "org.Dr.eg.db", "org.Dm.eg.db", "org.Ce.eg.db", "org.Sc.sgd.db", "org.EcK12.eg.db", "org.At.tair.db")
           ekePDEGs <- enrichPathway(gene = genesENTREZ, organism = allOrganisms_enrichKEGG[[input$organism]], pvalueCutoff = 0.05)
           output$barplot_ekePDEGs <-renderPlot({
             barplot(ekePDEGs, showCategory = 30, title = "BarPlot DEGs REACTOME Pathways enrichment")
