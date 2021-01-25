@@ -17,7 +17,7 @@ The application takes a simple **un-ordered** gene list, or a gene list **ordere
 The application creates the relative visualisation of each analysis in terms of dotplots and/or barplots.
 
 ## Download
-Current release https://github.com/parisepigenetics/shiny-your-gene-list/releases/tag/firsLabRelease
+Current release [https://github.com/parisepigenetics/shiny-your-gene-list/releases/tag/firsLabRelease](https://github.com/parisepigenetics/shiny-your-gene-list/releases/tag/firsLabRelease)
 
 ## Requirements
 The Rstudio suite is needed to launch the app. (please install a relatively new version of [RStudio](https://rstudio.com/products/rstudio/download/) as this will make easier the use and run of the app)
